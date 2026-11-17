@@ -64,6 +64,18 @@ def _dip_bps(close):
     return (high - close) * 10000 // high
 
 
+def _should_buy(dip, seq):
+    """Return True when the dip at this bar meets the entry rule.
+
+    Buy on a dip of at least DIP_BPS below the trailing high, or, from
+    FALLBACK_BAR onward while still flat, on a dip of at least
+    FALLBACK_DIP_BPS. A pure function of its arguments; it reads no state.
+    """
+    if dip >= DIP_BPS:
+        return True
+    return seq >= FALLBACK_BAR and dip >= FALLBACK_DIP_BPS
+
+
 def on_batch(state, batch):
     # Orders decided on a warm-up batch are rejected, so send none.
     if state.warming_up:
@@ -79,10 +91,7 @@ def on_batch(state, batch):
         return []
 
     dip = _dip_bps(close)
-    buy = dip >= DIP_BPS
-    if not buy and state.seq >= FALLBACK_BAR:
-        buy = dip >= FALLBACK_DIP_BPS
-    if not buy:
+    if not _should_buy(dip, state.seq):
         return []
 
     cash = state.cash
